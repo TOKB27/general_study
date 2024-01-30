@@ -35,3 +35,14 @@ XSS による被害が発生した場合, 脆弱な WEB サイトを放置して
 ＊DOM-based XSSの対策
 ・「document.write」や「innerHTML」等のメソッドやプロパティを使わず、
   「createElement」等のDOM操作用のメソッドやプロパティを使うようにする。
+
+
+【クリックジャッキング攻撃】
+iframeなどで透明化したレイヤに標的サイトのコンテンツを重ねて配置し、不正な操作を実行させる攻撃。
+
+＊対策
+・Webサイト側がHTTPレスポンスヘッダにX-Frame-Optionを含める
+  frameまたはiframeでページを表示する可否を指定する仕組み
+
+・Webサイト側がHTTPレスポンスヘッダにContent-Security-Policyを含める
+  frameまたはiframeでページを表示するドメインを限定する仕組み
