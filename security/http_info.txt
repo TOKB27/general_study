@@ -1,0 +1,6 @@
+## HTTPメッセージヘッダー ##
+[リクエスト時]
+・Authrization
+認証方式や認証情報。サーバからのWWW-Authenticateヘッダに答える。
+
+・
