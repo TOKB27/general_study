@@ -313,17 +313,11 @@ JavaScriptから他のオリジンのデータを取得するための古い回�
 <script>タグの特性を利用して、同一オリジン制限を回避します。
 
 動作イメージ：
-
-html
-コピーする
-編集する
 <script src="https://api.example.com/data?callback=handleData"></script>
+
 制限：
-
 GETリクエストのみ対応
-
 セキュリティリスクがある（任意のJavaScriptが実行される）
-
 現在は非推奨で、代わりにCORSが使われることが多いです。
 
 ・CORS（Cross-Origin Resource Sharing）
@@ -332,13 +326,8 @@ GETリクエストのみ対応
 サーバー側がHTTPヘッダーで明示的に「このオリジンからのアクセスは許可する」と指定することで、安全に通信できるようにします。
 
 代表的なヘッダー：
-
-http
-コピーする
-編集する
 Access-Control-Allow-Origin: https://your-frontend.com
+
 特徴：
-
 GET/POST だけでなく PUT, DELETE も対応可能
-
 プリフライトリクエスト（OPTIONS）による確認も行われる
