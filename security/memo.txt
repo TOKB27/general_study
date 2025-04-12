@@ -294,3 +294,51 @@ RAID6（ダブルパリティレイド）・・・RAID 5同様、書き込みの
                               パリティデータを2本のドライブに分散して書き込むことで、
                               耐障害性を高めた方式。
                               2本のドライブに障害が発生しても、処理の継続が可能。
+
+
+・Same-Originポリシー
+概要：
+ウェブブラウザが、異なるオリジン（＝スキーム・ドメイン・ポートの組み合わせ）間でのデータのやりとりを制限するセキュリティ機能です。
+
+例：
+https://example.com のJavaScriptは、通常は https://another.com のデータにアクセスできません。
+
+目的：
+悪意あるサイトが、ユーザーがログイン中の別サービスの情報に勝手にアクセスするのを防ぐため。
+
+
+・JSONP（JSON with Padding）
+概要：
+JavaScriptから他のオリジンのデータを取得するための古い回避手段の一つ。
+<script>タグの特性を利用して、同一オリジン制限を回避します。
+
+動作イメージ：
+
+html
+コピーする
+編集する
+<script src="https://api.example.com/data?callback=handleData"></script>
+制限：
+
+GETリクエストのみ対応
+
+セキュリティリスクがある（任意のJavaScriptが実行される）
+
+現在は非推奨で、代わりにCORSが使われることが多いです。
+
+・CORS（Cross-Origin Resource Sharing）
+概要：
+異なるオリジン間でリソースを共有するための仕組み（標準仕様）。
+サーバー側がHTTPヘッダーで明示的に「このオリジンからのアクセスは許可する」と指定することで、安全に通信できるようにします。
+
+代表的なヘッダー：
+
+http
+コピーする
+編集する
+Access-Control-Allow-Origin: https://your-frontend.com
+特徴：
+
+GET/POST だけでなく PUT, DELETE も対応可能
+
+プリフライトリクエスト（OPTIONS）による確認も行われる
