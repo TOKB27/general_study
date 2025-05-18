@@ -1,0 +1,52 @@
+******************************************************************
+以下の機能のカバー範囲を整理
+・Prisma Cloud(CSPM)
+・Prisma Cloud(CWPP)
+・GuardDuty
+・Config
+・Inspector
+******************************************************************
+
+【各領域に対応しているサービス】
+# クラウド構成監査:AWS設定ミス（例：S3パブリックアクセス、IAM過剰権限など）を検出
+・Prisma Cloud(CSPM)
+・Config
+
+# ランタイム脅威検出:実行中のワークロード内での不審なプロセスや通信を検知
+・Prisma Cloud(CWPP)
+・GuardDuty
+※GuardDutyはログベースの検知であり、実行中プロセスそのものの監視ではない。
+
+# ログベースの脅威検出:CloudTrailやVPC Flow Logsなどのログから脅威を検出
+・GuardDuty
+
+# コンプライアンスチェック:CIS、PCI DSSなどに準拠しているかの確認
+・Prisma Cloud(CSPM)
+・Config
+
+# 脆弱性スキャン:	OSやコンテナイメージのCVE脆弱性を検出
+・Prisma Cloud(CWPP)
+・Inspector
+
+【Guard DutyとPrisma Cloud(CWPP)の比較】
+# GuardDutyのみ
+・通信ログベースの脅威検出（C&C通信、不審なDNSなど）
+・IAMユーザーによる異常なAPI呼び出し（CloudTrailベース）
+
+# Prisma Cloud(CWPP)のみ
+・ワークロード内部の不審プロセス実行や挙動検知
+・コンテナやホスト内でのマルウェア感染検出、ポリシー違反検知（ランタイム防御）
+
+# 共通の検知対象
+・仮想通貨マイニングの兆候
+・マルウェアの存在検知
+・ポートスキャンの兆候
+
+結論
+Prisma Cloud（CWPP）は「実行中の脅威挙動」を検出
+GuardDutyは「それらの結果がログとして現れたもの」を検出
+→ 同じ脅威を検出できるが、“いつ・どこで・どの視点から”が違うため、併用する意味がある
+
+# 参考文献
+【CSPM】Prisma Cloud と AWS Security Hub の違いを解説
+https://blog.usize-tech.com/cspm-compare-prismacloud-securityhub/
