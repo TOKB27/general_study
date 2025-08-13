@@ -1,0 +1,37 @@
+**************************************
+git操作メモ
+**************************************
+
+・コミットがないことを確認
+git status
+
+・リモートリポジトリのmasterリポジトリと同じ状態にする
+git pull origin master
+
+・ブランチをきる
+git checkout -b test
+
+・コードの変更作業をする
+
+・変更したファイルをステージにaddする
+git add .
+
+・ローカルリポジトリにコミットする
+git commit -m “test修正”
+
+・リモートリポジトリにプッシュする
+git push origin test
+
+・GUIでプルリクエストを作成して承認及びマージ、ブランチの削除まで完了させる
+
+・ローカルでもmasterブランチに戻る
+git checkout master
+
+・リモートリポジトリのmasterリポジトリと同じ状態にする
+git pull origin master
+
+・ローカルのブランチ状態の確認をする
+git branch
+
+・ローカルの不要なブランチを削除する
+git branch -d test
