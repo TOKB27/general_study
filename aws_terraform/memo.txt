@@ -1,0 +1,16 @@
+# 初回設定（main.tf作成後に実行）
+terraform init
+
+# フォーマットチェック
+terraform fmt
+# 構文チェック
+terraform validate
+
+# 実行プラン確認
+terraform plan
+
+# Terraformの実行
+terraform apply
+
+# Terraformで作成したインスタンスを削除
+terraform destroy
