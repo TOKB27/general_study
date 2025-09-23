@@ -1,0 +1,30 @@
+# ローカルからEC2を踏み台にRDSへのセッションを構築
+aws ssm start-session \
+  --target i-xxxxxxxxxxxxxxx \
+  --document-name AWS-StartPortForwardingSessionToRemoteHost \
+  --parameters '{"host":["mydb.xxxxxx.ap-northeast-1.rds.amazonaws.com"],"portNumber":["5432"],"localPortNumber":["6022"]}'
+
+
+# docker-compose.yml
+version: "3.8"
+services:
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    ports:
+      - "8080:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+    volumes:
+      - ./pgadmin-data:/var/lib/pgadmin
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+
+#pgAdminの接続設定（Connectionタブ）
+Host: host.docker.internal
+Port: 6022
+Maintenance DB: postgres（任意）
+Username/Password: RDSの認証情報
