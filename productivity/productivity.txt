@@ -1,0 +1,12 @@
+■一定期間のステップ数（Churn計算 追加行数＋削除行数）取得方法
+
+AUTHOR="名前を入れる"
+START="2025-10-01T00:00:00+09:00"
+END="2025-10-22T00:00:00+09:00"
+
+git log --no-merges -M -C \
+  --author="$AUTHOR" \
+  --since="$START" --until="$END" \
+  --numstat --pretty="%H" -- \
+  ":(exclude)node_modules" ":(exclude)dist" |
+awk '/^[0-9]+\t[0-9]+\t/ { add+=$1; del+=$2 } END { print "churn = " add+del " lines" }'
