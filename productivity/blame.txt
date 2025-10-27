@@ -1,0 +1,23 @@
+手順の考え方
+	1.	A と B を決める（例：9/1 0:00 と 10/31 23:59 の各ブランチ先頭）
+	2.	B 時点の全ファイルに git blame（-w 推奨）をかけ、各行のコミット日時と作者取得
+	3.	A 以前に存在しない“新規行”（または A 以降のコミットで導入された行）だけを集計
+
+A=$(git rev-list -1 --before="2025-09-01 00:00:00 +0900" main)
+B=$(git rev-list -1 --before="2025-10-31 23:59:59 +0900" main)
+
+# Bで追えるファイルを列挙して blame。A以降導入の行のみ加算する方針。
+git diff --name-only "$A" "$B" -- \
+| while read f; do
+  git blame -w --line-porcelain "$B" -- "$f" \
+  | awk -v a="$A" '
+      /^author /{author=$0; sub(/^author /,"",author)}
+      /^committer-time /{t=$2}
+      /^$/{
+        # 直近コミット時刻tが A の時刻より新しければ「A以降導入」とみなす
+        if (t>0 && author!="") cnt[author]++
+        author=""; t=0
+      }
+      END{for(k in cnt) print k, cnt[k]}
+    '
+done | awk '{sum[$1]+=$2} END{for(k in sum) print k,sum[k]}' | sort -k2,2nr
