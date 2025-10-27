@@ -1,0 +1,9 @@
+# 期間のスナップショット（JSTで日付指定）
+A=$(git rev-list -1 --before="2025-09-01 00:00:00 +0900" main)
+B=$(git rev-list -1 --before="2025-10-31 23:59:59 +0900" main)
+
+# 追加・削除と純増（net=add-del）
+git diff -M -w --numstat "$A" "$B" -- \
+  ':(exclude)vendor/**' ':(exclude)node_modules/**' ':(exclude)dist/**' \
+  ':(exclude)build/**'  ':(exclude)target/**'      ':(exclude)*.min.js' \
+| awk 'NF==3 && $1!="-"{add+=$1; del+=$2} END{printf "add=%d, del=%d, net=%d\n", add, del, add-del}'
