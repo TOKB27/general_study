@@ -1,0 +1,14 @@
+from psycopg import connect
+from psycopg.pq import PipelineMode
+
+with connect("dbname=your_db user=your_user password=your_password host=your-rds-endpoint") as conn:
+    with conn.pipeline():
+        with conn.cursor() as cur:
+            cur.execute("BEGIN;")
+            cur.execute("SELECT * FROM table_a;")
+            cur.execute("SELECT a.*, b.* FROM table_a a JOIN table_b b ON a.id = b.a_id;")
+            cur.execute("COMMIT;")
+
+            # パイプライン終了後にまとめて結果取得
+            for res in cur.fetchall():
+                print(res)
