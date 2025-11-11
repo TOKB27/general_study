@@ -1,0 +1,12 @@
+git log = 活動量（churn）
+git diff = 成果量（net / スナップショット差分）
+
+churn（チャーン）＝変更量
+git log --numstat
+add + del
+期間中どれだけ手を動かしたか（作業量）
+
+net（純増）＝スナップショット差分
+git diff --numstat
+add − del
+最終的にコードがどれだけ増えたか（成果）
