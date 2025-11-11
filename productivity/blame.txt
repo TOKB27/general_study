@@ -1,23 +1,58 @@
-手順の考え方
-	1.	A と B を決める（例：9/1 0:00 と 10/31 23:59 の各ブランチ先頭）
-	2.	B 時点の全ファイルに git blame（-w 推奨）をかけ、各行のコミット日時と作者取得
-	3.	A 以前に存在しない“新規行”（または A 以降のコミットで導入された行）だけを集計
+#!/usr/bin/env bash
+# author_add_del_from_diff.sh
+# 実行方法
+# ./author_net_from_snapshot.sh main "2025-09-01 00:00:00 +0900" "2025-10-31 23:59:59 +0900"
+set -euo pipefail
 
-A=$(git rev-list -1 --before="2025-09-01 00:00:00 +0900" main)
-B=$(git rev-list -1 --before="2025-10-31 23:59:59 +0900" main)
+BRANCH="${1:-main}"
+SINCE="${2:-2025-09-01 00:00:00 +0900}"   # A
+UNTIL="${3:-2025-10-31 23:59:59 +0900}"   # B
 
-# Bで追えるファイルを列挙して blame。A以降導入の行のみ加算する方針。
-git diff --name-only "$A" "$B" -- \
-| while read f; do
-  git blame -w --line-porcelain "$B" -- "$f" \
-  | awk -v a="$A" '
-      /^author /{author=$0; sub(/^author /,"",author)}
-      /^committer-time /{t=$2}
-      /^$/{
-        # 直近コミット時刻tが A の時刻より新しければ「A以降導入」とみなす
-        if (t>0 && author!="") cnt[author]++
-        author=""; t=0
-      }
-      END{for(k in cnt) print k, cnt[k]}
-    '
-done | awk '{sum[$1]+=$2} END{for(k in sum) print k,sum[k]}' | sort -k2,2nr
+A=$(git rev-list -1 --before="$SINCE" "$BRANCH")
+B=$(git rev-list -1 --before="$UNTIL" "$BRANCH")
+
+# 対象ファイルのみ
+FILES=$(git diff -M -w --name-only "$A" "$B" -- \
+  ':(exclude)vendor/**' ':(exclude)node_modules/**' ':(exclude)dist/**' \
+  ':(exclude)build/**'  ':(exclude)target/**'      ':(exclude)*.min.js' \
+  '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.rb' '*.php' '*.java' '*.kt' \
+  '*.cs' '*.cpp' '*.c' '*.h' '*.rs' '*.swift' '*.scala' '*.sql' '*.sh' \
+  '*.yaml' '*.yml' '*.toml' Makefile Dockerfile)
+
+# 追加/削除をhunk単位で抽出（--unified=0 で範囲をピンポイント化）
+for f in $FILES; do
+  git diff -M -w --unified=0 "$A" "$B" -- "$f" \
+  | awk -v file="$f" '
+      # @@ -a,b +c,d @@
+      /^@@ /{
+        match($0, /-([0-9]+),?([0-9]*) [+]{1}([0-9]+),?([0-9]*)/, m)
+        a = m[1]; alen = (m[2]==""?1:m[2]); if(alen=="") alen=1
+        c = m[3]; clen = (m[4]==""?1:m[4]); if(clen=="") clen=1
+        if (alen>0) printf("DEL\t%s\t%d\t%d\n", file, a, a+alen-1)
+        if (clen>0) printf("ADD\t%s\t%d\t%d\n", file, c, c+clen-1)
+      }'
+done \
+| while IFS=$'\t' read -r kind file l1 l2; do
+    if [ "$kind" = "ADD" ]; then
+      # 追加は B 側で blame
+      git blame -w -L "$l1,$l2" --line-porcelain "$B" -- "$file" \
+      | awk '
+          /^author /{a=$0; sub(/^author /,"",a); cnt[a]++}
+          END{for(k in cnt) print "ADD\t"k"\t"cnt[k]}'
+    else
+      # 削除は A 側で blame（消された行の元作者）
+      git blame -w -L "$l1,$l2" --line-porcelain "$A" -- "$file" \
+      | awk '
+          /^author /{a=$0; sub(/^author /,"",a); cnt[a]++}
+          END{for(k in cnt) print "DEL\t"k"\t"cnt[k]}'
+    fi
+  done \
+| awk -F'\t' '
+    $1=="ADD"{add[$2]+=$3}
+    $1=="DEL"{del[$2]+=$3}
+    END{
+      print "author\tadd\tdel\tnet"
+      for (a in add) { d=(a in del?del[a]:0); printf "%s\t%d\t%d\t%d\n", a, add[a], d, add[a]-d }
+      for (a in del) if (!(a in add)) printf "%s\t%d\t%d\t%d\n", a, 0, del[a], -del[a]
+    }' \
+| column -t | sort -k4,4nr
