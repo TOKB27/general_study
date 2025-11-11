@@ -1,0 +1,14 @@
+[S3静的サイトのHTML]   ボタン押下 (POST /exports)
+        ↓
+[API Gateway or Lambda関数URL]
+        ↓
+[Lambda(Python)]
+  1) RDS接続（Secrets Manager or IAM認証）
+  2) クエリ実行（ストリーミング/チャンクfetch）
+  3) /tmpへCSV逐次書き込み（UTF-8 BOM + CRLF）
+  4) S3へ一時アップロード（Tag: one-time=true）
+  5) 署名付きURL発行（短TTL）
+        ↓
+← download_url を返却（HTMLが自動保存）
+        ↓
+（任意）CloudTrailのGetObject検知 → 即削除Lambda
