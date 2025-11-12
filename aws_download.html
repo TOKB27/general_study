@@ -1,0 +1,16 @@
+<button id="exportBtn">CSVを生成してダウンロード</button>
+<div id="status"></div>
+<script>
+const API = "https://your-api-id.execute-api.ap-northeast-1.amazonaws.com/prod/exports";
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const s = document.getElementById('status');
+  s.textContent = "生成中…";
+  const r = await fetch(API, { method: 'POST' });
+  if (!r.ok) { s.textContent = "失敗しました"; return; }
+  const { download_url } = await r.json();
+  s.textContent = "ダウンロード開始…";
+  const a = document.createElement('a');
+  a.href = download_url; a.download = "export.csv"; a.click();
+  s.textContent = "完了！";
+});
+</script>
