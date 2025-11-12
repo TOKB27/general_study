@@ -11,4 +11,54 @@
         ↓
 ← download_url を返却（HTMLが自動保存）
         ↓
-（任意）CloudTrailのGetObject検知 → 即削除Lambda
+CloudTrailのGetObject検知 → 即削除Lambda
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {  // S3: 一時配置と署名URL用
+      "Sid": "S3WriteAndReadForTmp",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectTagging",
+        "s3:AbortMultipartUpload",
+        "s3:CreateMultipartUpload",
+        "s3:UploadPart",
+        "s3:CompleteMultipartUpload",
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/tmp/*"
+    },
+    {  // （任意）マルチパート一覧の参照が必要なSDK実装向け
+      "Sid": "S3ListMultipartUploads",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucketMultipartUploads",
+        "s3:ListBucket"  // prefix=tmp/ に絞る
+      ],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME",
+      "Condition": {
+        "StringLike": { "s3:prefix": "tmp/*" }
+      }
+    },
+    {  // Secrets Manager: DBユーザー/パス取得
+      "Sid": "ReadDbCredentials",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:YOUR_SECRET_NAME*"
+    },
+    {  // （カスタムKMSキーを秘密情報に使っている場合のみ）
+      "Sid": "KmsDecryptForSecret",
+      "Effect": "Allow",
+      "Action": [ "kms:Decrypt" ],
+      "Resource": "arn:aws:kms:REGION:ACCOUNT_ID:key/YOUR_KMS_KEY_ID",
+      "Condition": {
+        "StringEquals": { "kms:ViaService": "secretsmanager.REGION.amazonaws.com" }
+      }
+    }
+  ]
+}
