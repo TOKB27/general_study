@@ -1,0 +1,11 @@
+1. 基本の集計クエリ（実行回数）
+Lambdaの実行ログに含まれる REPORT 行（各実行の最後に必ず出力されるメタデータ）を対象に集計します。
+
+CloudWatch コンソールの 「ログ」→「Logs Insights」 を選択
+
+ロググループの選択で、対象の Lambda 関数のロググループ（例: /aws/lambda/関数名）を選択
+
+期間を 4月1日〜4月30日 に設定し、下記のクエリを実行
+
+filter @message like /REPORT/
+| stats count(*) as invocationCount by bin(1d)
