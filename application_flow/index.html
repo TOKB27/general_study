@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>申請一覧・一括管理システム</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <style>
+      body { background-color: #f8f9fa; padding-top: 2rem; }
+      .card { box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+      .table th { background-color: #f1f3f5; font-size: 0.9rem; }
+      .badge-jira-open { background-color: #0d6efd; }
+      .badge-jira-closed { background-color: #198754; }
+      .badge-input-wait { background-color: #ffc107; color: #000; }
+      .badge-input-ready { background-color: #fd7e14; }
+      .badge-input-done { background-color: #6c757d; }
+      /* btn-groupの密着を回避するため、個別のボタンサイズ指定に調整 */
+      .btn-xs { padding: .15rem .4rem; font-size: .75rem; line-height: 1.5; border-radius: .2rem; }
+    </style>
+  </head>
+  <body>
+
+    <div class="container-fluid px-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h3">申請データ一覧</h1>
+        </div>
+        <div>
+          <button class="btn btn-primary me-2" id="btnBulkJiraSubmit" disabled>選択した申請を一括Jira起票</button>
+          <button class="btn btn-dark" id="btnVersionRelease">バージョン発行 (管理者用)</button>
+        </div>
+      </div>
+
+      <div id="alertContainer"></div>
+
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tableMainApplications">
+              <thead>
+                <tr>
+                  <th width="40" class="text-center"><input type="checkbox" id="checkAllApps"></th>
+                  <th width="180">操作</th>
+                  <th>申請ID</th>
+                  <th>名称</th>
+                  <th>Jiraステータス</th>
+                  <th>投入ステータス</th>
+                  <th>Jiraリンク</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title" id="detailModalTitle">申請詳細</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <table class="table table-bordered">
+              <tr><th width="30%">項目</th><th>内容</th></tr>
+              <tr><td>申請ID</td><td><code id="lblDetailId"></code></td></tr>
+              <tr><td>名称</td><td id="lblDetailName"></td></tr>
+              <tr><td>Jiraステータス</td><td><span id="lblDetailJira" class="badge"></span></td></tr>
+              <tr><td>投入ステータス</td><td><span id="lblDetailInput" class="badge"></span></td></tr>
+            </table>
+            <div class="alert alert-info py-2" style="font-size: 0.85rem;">
+              モーダルウィザード（modalWizard.js）と連携して、この詳細データを基に変更申請や複製起票を行えます。
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            <div>
+              <button type="button" class="btn btn-warning me-1" id="btnDetailEdit">📝 このデータを編集</button>
+              <button type="button" class="btn btn-success" id="btnDetailClone">📋 このデータを複製</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="adminAuthModal" data-bs-backdrop="static" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title">管理者認証</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>バージョン発行処理を実行するため、管理者コードを入力してください。</p>
+            <div class="mb-3">
+              <label class="form-label">管理者コード (検証用パスコード: <code>admin1234</code>)</label>
+              <input type="password" class="form-control" id="inputAdminCode" placeholder="••••••••">
+              <div class="invalid-feedback">コードが正しくありません。</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+            <button type="button" class="btn btn-primary" id="btnConfirmAdminAuth">認証して発行</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 1. 初期モックデータ（RDSの代わりとなるインメモリデータ）
+      let mockApplications = [
+        { id: "A-001", name: "バックアップ期間延長申請", jira_status: "申請前", input_status: "", jira_url: "" },
+        { id: "A-002", name: "初期マスタデータ登録", jira_status: "申請前", input_status: "", jira_url: "" },
+        { id: "A-003", name: "NANDブロック初期化パラメータ", jira_status: "オープン", input_status: "承認待ち", jira_url: "https://jira.example.com/browse/A-003" },
+        { id: "A-004", name: "センサー閾値チューニング", jira_status: "オープン", input_status: "投入対象", jira_url: "https://jira.example.com/browse/A-004" },
+        { id: "A-005", name: "海外モデル用国コード追加", jira_status: "完了", input_status: "投入完了", jira_url: "https://jira.example.com/browse/A-005" }
+      ];
+
+      let selectedDetailRecord = null; // 現在詳細表示しているデータポインタ
+      const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+      const adminModal = new bootstrap.Modal(document.getElementById('adminAuthModal'));
+
+      // 2. テーブルレンダリング処理
+      function renderTable() {
+        const $tbody = $("#tableMainApplications tbody").empty();
+
+        mockApplications.forEach(app => {
+          // ステータスに応じたバッジのクラス判定
+          let jiraBadge = app.jira_status === "申請前" ? 'bg-secondary' : (app.jira_status === "オープン" ? 'badge-jira-open' : 'badge-jira-closed');
+          let inputBadge = '';
+          if (app.input_status === "承認待ち") inputBadge = 'badge-input-wait';
+          if (app.input_status === "投入対象") inputBadge = 'badge-input-ready';
+          if (app.input_status === "投入完了") inputBadge = 'badge-input-done';
+
+          // 申請前データのみJira一括起票の複数選択チェック対象にする
+          const isBeforeApply = app.jira_status === "申請前";
+          const chkDisabled = isBeforeApply ? '' : 'disabled';
+
+          // ボタンコンテナを btn-group から d-flex gap-1（余白付き横並び）に変更
+          $tbody.append(`
+            <tr>
+              <td class="text-center">
+                <input type="checkbox" class="app-select-item" data-id="${app.id}" ${chkDisabled}>
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-outline-dark btn-xs btn-detail" data-id="${app.id}">詳細</button>
+                  <button class="btn btn-outline-warning text-dark btn-xs btn-edit" data-id="${app.id}">編集</button>
+                  <button class="btn btn-outline-success btn-xs btn-clone" data-id="${app.id}">複製</button>
+                </div>
+              </td>
+              <td><code>${app.id}</code></td>
+              <td>${app.name}</td>
+              <td><span class="badge ${jiraBadge}">${app.jira_status}</span></td>
+              <td>${app.input_status ? `<span class="badge ${inputBadge}">${app.input_status}</span>` : '<span class="text-muted">—</span>'}</td>
+              <td>${app.jira_url ? `<a href="${app.jira_url}" target="_blank">Jira</a>` : '<span class="text-muted">—</span>'}</td>
+            </tr>
+          `);
+        });
+        
+        toggleBulkSubmitButton();
+      }
+
+      // 通知アラートヘルパー
+      function showAlert(message, type = "success") {
+        const alertHtml = `
+          <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        `;
+        $("#alertContainer").append(alertHtml);
+        setTimeout(() => $(".alert").alert('close'), 4000);
+      }
+
+      // 一括起票ボタンの制御（「申請前」データが選択されている場合のみ活性化）
+      function toggleBulkSubmitButton() {
+        const checkedCount = $(".app-select-item:checked").length;
+        $("#btnBulkJiraSubmit").prop("disabled", checkedCount === 0);
+      }
+
+      $(function() {
+        renderTable();
+
+        // 全選択チェックボックスのハンドリング
+        $("#checkAllApps").on("change", function() {
+          // 活性化している（申請前データの）チェックボックスのみ連動
+          $(".app-select-item:not([disabled])").prop("checked", $(this).is(":checked"));
+          toggleBulkSubmitButton();
+        });
+        
+        $(document).on("change", ".app-select-item", function() {
+          toggleBulkSubmitButton();
+        });
+
+        // --- 操作：詳細ボタンの処理 ＆ モーダルへの値セット ---
+        $(document).on("click", ".btn-detail", function() {
+          const id = $(this).data("id");
+          selectedDetailRecord = mockApplications.find(app => app.id === id);
+
+          if (selectedDetailRecord) {
+            $("#detailModalTitle").text(`申請詳細情報（ID: ${selectedDetailRecord.id}）`);
+            $("#lblDetailId").text(selectedDetailRecord.id);
+            $("#lblDetailName").text(selectedDetailRecord.name);
+            
+            // バッジクラスの付与
+            $("#lblDetailJira").text(selectedDetailRecord.jira_status).attr("class", "badge " + 
+              (selectedDetailRecord.jira_status === "申請前" ? "bg-secondary" : (selectedDetailRecord.jira_status === "オープン" ? "badge-jira-open" : "badge-jira-closed"))
+            );
+            
+            if (selectedDetailRecord.input_status) {
+              let inClass = selectedDetailRecord.input_status === "承認待ち" ? "badge-input-wait" : (selectedDetailRecord.input_status === "投入対象" ? "badge-input-ready" : "badge-input-done");
+              $("#lblDetailInput").text(selectedDetailRecord.input_status).attr("class", "badge " + inClass).show();
+            } else {
+              $("#lblDetailInput").hide();
+            }
+
+            detailModal.show();
+          }
+        });
+
+        // 詳細モーダル内の "編集" / "複製" アクション要件
+        $("#btnDetailEdit").on("click", function() {
+          if (!selectedDetailRecord) return;
+          detailModal.hide();
+          // ウィザード側への繋ぎ込みのトリガーイベント
+          showAlert(`詳細画面から編集が要求されました。対象ID: ${selectedDetailRecord.id} (変更申請ウィザードへ連携)`, "warning");
+        });
+
+        $("#btnDetailClone").on("click", function() {
+          if (!selectedDetailRecord) return;
+          detailModal.hide();
+          showAlert(`詳細画面から複製が要求されました。対象ID: ${selectedDetailRecord.id} (再申請・コピーウィザードへ連携)`, "success");
+        });
+
+        // --- 操作：直接の編集ボタン / 複製ボタン ---
+        $(document).on("click", ".btn-edit", function() {
+          const id = $(this).data("id");
+          showAlert(`直接編集が選ばれました。申請ID: ${id} の編集を開始します。`, "warning");
+        });
+
+        $(document).on("click", ".btn-clone", function() {
+          const id = $(this).data("id");
+          showAlert(`直接複製が選ばれました。申請ID: ${id} のコピーデータを作成します。`, "success");
+        });
+
+        // --- ④ 複数申請の一括Jira起票処理 ---
+        $("#btnBulkJiraSubmit").on("click", function() {
+          let selectedIds = [];
+          $(".app-select-item:checked").each(function() {
+            selectedIds.push($(this).data("id"));
+          });
+
+          mockApplications.forEach(app => {
+            if (selectedIds.includes(app.id)) {
+              app.jira_status = "オープン";
+              app.input_status = "承認待ち";
+              app.jira_url = `https://jira.example.com/browse/${app.id}`;
+            }
+          });
+
+          $("#checkAllApps").prop("checked", false);
+          showAlert(`一括起票処理完了: 申請 (${selectedIds.join(", ")}) のJiraチケットを生成し、ステータスを「承認待ち」へ変更しました。`);
+          renderTable();
+        });
+
+        // --- ③ バージョン発行フロー (管理者コード認証) ---
+        $("#btnVersionRelease").on("click", function() {
+          $("#inputAdminCode").removeClass("is-invalid").val("");
+          adminModal.show();
+        });
+
+        $("#btnConfirmAdminAuth").on("click", function() {
+          const code = $("#inputAdminCode").val();
+          
+          if (code === "admin1234") {
+            adminModal.hide();
+            
+            // 「投入対象」のレコードを抽出
+            let targetApps = mockApplications.filter(app => app.input_status === "投入対象");
+            
+            if (targetApps.length === 0) {
+              showAlert("投入ステータスが「投入対象」のデータが存在しないため、処理をスキップしました。", "warning");
+              return;
+            }
+
+            // ステータスを「投入完了」へ一括更新
+            targetApps.forEach(app => {
+              app.input_status = "投入完了";
+            });
+
+            showAlert(`バージョン発行に成功しました。対象データ ${targetApps.length} 件を「投入完了」に更新し、リリーススナップショットを保存しました。`);
+            renderTable();
+          } else {
+            $("#inputAdminCode").addClass("is-invalid");
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
