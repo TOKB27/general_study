@@ -26,10 +26,19 @@ erDiagram
         datetime updated_at "更新日時"
     }
 
+    %% 【新規追加】バージョン（世代）そのものを管理するテーブル
+    version_managertbl {
+        int version_id PK "バージョン内部ID（自動採番）"
+        string version_name "バージョン名（例: 260706_DCS_24su2）"
+        string project_code "識別子（例: DCS_24su2 ※4種類存在）"
+        date release_date "発行年月日（例: 2026-07-06）"
+        datetime created_at "発行日時"
+    }
+
     %% データ管理テーブル：backuptbl
     backuptbl {
         int resource_number PK "自動採番ID"
-        int version PK "発行されたバージョン番号"
+        int version_id PK "外部キー：発行されたバージョンID"
         int application_id FK "元となった申請ID"
         jsonb resource_data "resourceデータ"
         datetime updated_at "バージョン発行日時（格納日）"
@@ -39,7 +48,7 @@ erDiagram
     %% データ管理テーブル：nandtbl
     nandtbl {
         int resource_number PK "自動採番ID"
-        int version PK "発行されたバージョン番号"
+        int version_id PK "外部キー：発行されたバージョンID"
         int application_id FK "元となった申請ID"
         jsonb resource_data "resourceデータ"
         datetime updated_at "バージョン発行日時（格納日）"
@@ -49,7 +58,7 @@ erDiagram
     %% データ管理テーブル：propertymanagertbl
     propertymanagertbl {
         int resource_number PK "自動採番ID"
-        int version PK "発行されたバージョン番号"
+        int version_id PK "外部キー：発行されたバージョンID"
         int application_id FK "元となった申請ID"
         jsonb resource_data "resourceデータ"
         datetime updated_at "バージョン発行日時（格納日）"
@@ -59,7 +68,7 @@ erDiagram
     %% データ管理テーブル：biltbl
     biltbl {
         int resource_number PK "自動採番ID"
-        int version PK "発行されたバージョン番号"
+        int version_id PK "外部キー：発行されたバージョンID"
         int application_id FK "元となった申請ID"
         jsonb resource_data "resourceデータ"
         datetime updated_at "バージョン発行日時（格納日）"
@@ -68,7 +77,11 @@ erDiagram
 
     %% リレーションシップの定義
     applicationtbl ||--o{ reviewtbl : "application_id で紐付け"
-    applicationtbl ||--o{ backuptbl : "バージョン発行時に一括格納 (application_id)"
-    applicationtbl ||--o{ nandtbl : "バージョン発行時に一括格納 (application_id)"
-    applicationtbl ||--o{ propertymanagertbl : "バージョン発行時に一括格納 (application_id)"
-    applicationtbl ||--o{ biltbl : "バージョン発行時に一括格納 (application_id)"
+    version_managertbl ||--o{ backuptbl : "version_id で世代を紐付け"
+    version_managertbl ||--o{ nandtbl : "version_id で世代を紐付け"
+    version_managertbl ||--o{ propertymanagertbl : "version_id で世代を紐付け"
+    version_managertbl ||--o{ biltbl : "version_id で世代を紐付け"
+    applicationtbl ||--o{ backuptbl : "監査用 (application_id)"
+    applicationtbl ||--o{ nandtbl : "監査用 (application_id)"
+    applicationtbl ||--o{ propertymanagertbl : "監査用 (application_id)"
+    applicationtbl ||--o{ biltbl : "監査用 (application_id)"
