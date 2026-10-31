@@ -1,2 +1,17 @@
 aws_terraform/terraform*
 aws_terraform/.terraform.lock.hcl
+
+# SAM build artifacts
+**/.aws-sam/
+**/.aws-sam
+
+# Local SAM config / generated deploy state
+**/samconfig.toml
+
+# Python local caches
+__pycache__/
+*.pyc
+
+# Editor / local environment
+.vscode/
+.DS_Store
